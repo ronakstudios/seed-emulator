@@ -72,7 +72,7 @@ class Genesis():
         """
 
         assert balance >= 0, "Genesis::allocateBalance: balance cannot have a negative value. Requested Balance Value : {}".format(balance)
-        checksum_address = Web3.toChecksumAddress(address)
+        checksum_address = Web3.to_checksum_address(address)
         self.__genesis["alloc"][checksum_address[2:]] = {"balance":"{}".format(balance)}
 
         return self
@@ -185,7 +185,7 @@ class EthAccount():
 
         EthAccount._log('creating node_{} emulator account {} from mnemonic...'.format(id, index))
         acct = Account.from_mnemonic(mnemonic, account_path=ETH_ACCOUNT_KEY_DERIVATION_PATH.format(id=id, index=index))
-        address = Web3.toChecksumAddress(acct.address)
+        address = Web3.to_checksum_address(acct.address)
         
         keystore_content = json.dumps(EthAccount.__encryptAccount(account=acct, password=password))
         datastr = datetime.now(timezone.utc).isoformat().replace("+00:00", "000Z").replace(":","-")
@@ -210,7 +210,7 @@ class EthAccount():
 
         EthAccount._log('creating local account {} from mnemonic...'.format(index))
         acct = Account.from_mnemonic(mnemonic, account_path=LOCAL_ACCOUNT_KEY_DERIVATION_PATH.format(index=index))
-        address = Web3.toChecksumAddress(acct.address)
+        address = Web3.to_checksum_address(acct.address)
 
         return AccountStructure(address, balance, "", "", "")
 

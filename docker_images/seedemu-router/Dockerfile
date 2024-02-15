@@ -1,4 +1,4 @@
-FROM handsonsecurity/seedemu-base
+FROM ronakparikhnj/seedemu-base-latestubuntu
 
 ARG DEBIAN_FRONTEND=noninteractive
 

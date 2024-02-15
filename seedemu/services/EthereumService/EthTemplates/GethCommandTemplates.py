@@ -4,13 +4,13 @@ GethCommandTemplates: Dict[str, str] = {}
 
 GethCommandTemplates['base'] = '''\
 geth --datadir {datadir} --identity="NODE_{node_id}" --networkid={chain_id} --syncmode {syncmode}\
- --snapshot={snapshot} --verbosity=2 --allow-insecure-unlock --port 30303\
+ --snapshot={snapshot} --verbosity=4 --maxpeers=5 --allow-insecure-unlock --port 30303\
 {option[finding_peers]}\
 {option[http]}\
 {option[ws]}\
 {option[pos]}\
 {option[unlock]}\
-                            {option[mine]}'''
+                            {option[mine]} 2>&1 | tee /gethLog.log'''
 
 
 GethCommandTemplates['mine'] = '''\

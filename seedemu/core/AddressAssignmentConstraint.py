@@ -180,6 +180,8 @@ class AddressAssignmentConstraint(Printable):
         """
         assert asn >= 2 and asn <= 254, "can't map ASN {} to IX address.".format(asn)
         return asn
+        #changed by ronak:
+        #return 100
 
     def print(self, indent: int) -> str:
         out = ' ' * indent

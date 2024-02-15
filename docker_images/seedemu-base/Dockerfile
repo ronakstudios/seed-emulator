@@ -1,4 +1,4 @@
-FROM ubuntu:20.04
+FROM ubuntu:latest
 
 ARG DEBIAN_FRONTEND=noninteractive
 RUN echo 'exec zsh' > /root/.bashrc

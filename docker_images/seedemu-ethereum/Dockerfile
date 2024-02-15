@@ -4,18 +4,18 @@ WORKDIR /
 RUN git clone https://github.com/ethereum/go-ethereum
 RUN cd go-ethereum && git checkout v1.10.26 && make all
 
-FROM rust:1.63 AS builder2
+FROM rust:1.76 AS builder2
 ARG DEBIAN_FRONTEND=noninteractive
 WORKDIR /
 RUN apt-get update && apt-get -y --no-install-recommends install software-properties-common build-essential curl git gcc g++ make cmake pkg-config llvm-dev libclang-dev clang protobuf-compiler
-RUN git clone https://github.com/wonkr/lighthouse.git
+RUN git clone https://github.com/sigp/lighthouse.git
 WORKDIR lighthouse
 RUN git checkout stable
 RUN make install
 RUN make install-lcli
 WORKDIR /
 
-FROM handsonsecurity/seedemu-base
+FROM ronakparikhnj/seedemu-base-latestubuntu
 
 RUN apt-get update && apt-get install -y --no-install-recommends software-properties-common python3 python3-pip
 RUN pip install web3

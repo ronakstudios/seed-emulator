@@ -18,9 +18,26 @@ ETHEREUM_IMAGE = DockerImage(name='handsonsecurity/seedemu-ethereum',
                                 software=['software-properties-common', 'python3', 'python3-pip'],
                                 subset=BASE_IMAGE)
 
+UBUNTU_IMAGE_RONAK   = DockerImage(name='ubuntu:latest',
+                                software=[],
+                                subset=None)                     
+
+BASE_IMAGE_RONAK     = DockerImage(name='ronakparikhnj/seedemu-base-latestubuntu',
+                                software=['zsh', 'curl', 'nano', 'vim-nox', 'mtr-tiny', 'iproute2',
+                                        'iputils-ping', 'tcpdump', 'termshark', 'dnsutils', 'jq', 'ipcalc', 'netcat'],
+                                subset=UBUNTU_IMAGE_RONAK)
+                                
+ETHEREUM_IMAGE_RONAK = DockerImage(name='ronakparikhnj/seedemu-ethereum-usingsigp',
+                                software=['software-properties-common', 'python3', 'python3-pip'],
+                                subset=BASE_IMAGE_RONAK)     
+                                
+ROUTER_IMAGE_RONAK   = DockerImage(name='ronakparikhnj/seedemu-router-latestubuntu',
+                                software=['bird2'],
+                                subset=BASE_IMAGE_RONAK)                           
+
 BASESYSTEM_DOCKERIMAGE_MAPPING = {
-        BaseSystem.UBUNTU_20_04:     UBUNTU_IMAGE,
-        BaseSystem.SEEDEMU_BASE:     BASE_IMAGE,
-        BaseSystem.SEEDEMU_ROUTER:   ROUTER_IMAGE,
-        BaseSystem.SEEDEMU_ETHEREUM: ETHEREUM_IMAGE
+        BaseSystem.UBUNTU_20_04:     UBUNTU_IMAGE_RONAK,
+        BaseSystem.SEEDEMU_BASE:     BASE_IMAGE_RONAK,
+        BaseSystem.SEEDEMU_ROUTER:   ROUTER_IMAGE_RONAK,
+        BaseSystem.SEEDEMU_ETHEREUM: ETHEREUM_IMAGE_RONAK
     }
