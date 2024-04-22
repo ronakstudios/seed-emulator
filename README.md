@@ -24,4 +24,3 @@ Change directory to the ETH Emulator program, modify the clients and topology fo
 When you first run `sudo docker compose build` it may fail because it is missing some required docker images. To fix this, navigate to `output/dummies` and look at the contents of those files. It should say something like "FROM handsonsecurity/seedemu-router". Remove the "FROM " and use docker pull on the rest of the string like so:
 `docker pull handsonsecurity/seedemu-router`
 After doing this, docker compose build may still keep giving the same error. As far as I am aware this is a glitch or a cache not clearing and the solution is unfortunately to repeatedly run docker compose build for about 10 minutes until it realizes it has the dependency.
-
