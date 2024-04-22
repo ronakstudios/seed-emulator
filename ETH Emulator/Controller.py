@@ -147,7 +147,6 @@ def getBlockPropogationTimes(hostNames,printLongTimes,removeLongTimes): #Finds p
     				pass
     return blockPropogationDelays1D
 
-#functions to add delay to a connection, can also specify internal network in the next function
 def addDelay(hostName,delayAmt):#amt in ms #assumes net0 (the local network you specify in SEED when setting up network topology)
     execOnDockerHost(hostName,"tc qdisc del dev net0 root")
     execOnDockerHost(hostName,"tc qdisc add dev net0 root netem delay "+str(delayAmt)+"ms")
@@ -156,22 +155,6 @@ def addDelayNet(hostName,delayAmt,network):
     execOnDockerHost(hostName,"tc qdisc del dev "+network+" root")
     execOnDockerHost(hostName,"tc qdisc add dev "+network+" root netem delay "+str(delayAmt)+"ms")
 
-#Read delay value only if it was set by the above two functions or from ASTopology (i.e. delay value in ASTopology was not 0)
-def getDelayNet(hostName,network):
-	return int(strip_ansi(execOnDockerHost(hostName,"tc -j qdisc show dev "+network+" | jq \".[0].options.delay.delay * 1000 | floor\"")[0]))
-
-def readDelayVector():
-	global delayRoutersNet0
-	global delayRoutersNet1
-	delVLen = delayVectorLen()
-	readDelayVector = [0]*delVLen
-	for i in range(len(delayRoutersNet0)):
-		readDelayVector[i] = getDelayNet(delayRoutersNet0[i],"net0")
-	for j in range(len(delayRoutersNet1)):
-		readDelayVector[i+1+j] = getDelayNet(delayRoutersNet1[j],"net1")
-	return readDelayVector
-
-#This function takes input a vector with a value for each router in the network to set its delay to
 #Issue, transit-transit connections appear twice because their delay is halved and spread across two bixr routers!
 #to fix this, in network creation, maybe also add the betweenIX number that the bixr routers are associated with since each transit-transit connection has its own betweenIX and you will be able to group the two bixr routers
 #this way and then outwardly show them as 1 element of the delayVec, internally halving the delay across the two routers or just putting the delay on one of the routers
@@ -187,7 +170,7 @@ def delayVector(delayVec):
 	for i in range(len(delayRoutersNet0)):
 		addDelayNet(delayRoutersNet0[i],delayVec[i],"net0")
 	for j in range(len(delayRoutersNet1)):
-		addDelayNet(delayRoutersNet1[j],delayVec[i+1+j],"net1")
+		addDelayNet(delayRoutersNet1[j],delayVec[i+j],"net1")
 
 def delayVectorLen():
 	global delayRoutersNet0
@@ -196,14 +179,12 @@ def delayVectorLen():
 		(delayRoutersNet0,delayRoutersNet1) = getDelayRouters()
 	return len(delayRoutersNet0)+len(delayRoutersNet1)
 
-#disconnects or reconnects a router using the seedemu_worker script on each node (this is the same function the seed vis tool uses on its gui)
 def disconnectConnect(hostName,disconnect):
 	if disconnect:
 		execOnDockerHost(hostName,"echo \"1;net_down\" | bash seedemu_worker")
 	else:
 		execOnDockerHost(hostName,"echo \"1;net_up\" | bash seedemu_worker")
-
-#Same as the delayVector function but disconnects or reconnects based on a boolean value rather than adding delay	
+	
 def disconnectVector(delayVec): #In the list disconnectVec, if an entry is True it will be disconnected, if False it will be reconnected
 	global delayRoutersNet0
 	global delayRoutersNet1
@@ -214,9 +195,8 @@ def disconnectVector(delayVec): #In the list disconnectVec, if an entry is True 
 	for i in range(len(delayRoutersNet0)):
 		disconnectConnect(delayRoutersNet0[i],delayVec[i])
 	for j in range(len(delayRoutersNet1)):
-		disconnectConnect(delayRoutersNet1[j],delayVec[i+1+j])
+		disconnectConnect(delayRoutersNet1[j],delayVec[i+j])
 
-#identifies the proposer of a block based on geth log files (who first logged the block) rather than the block's header which could have misinformation if an attacker put someone else in the header
 def blockProposerByTimeGeth(hostNames,hostAddrs,blockNum):
     minTime = 0.0;
     minTimeHostName = "";
@@ -362,7 +342,6 @@ def plotBeaconBlocks(hostNames,filePath):
 			daemonResponse = execOnDockerHost(hostName,"cat beaconBlocks.txt")
 		except:
 			print("Host "+hostName+" isnt recording beacon blocks")
-			print(traceback.format_exc())
 			continue
 		for line in daemonResponse[-1*numBlocksShown:]:
 			blockItems = line.split(' ')
@@ -438,7 +417,6 @@ def interactiveBeaconBlockViewer(hostNames,validatorindexHost,ipTable,filePath,b
 			blkSltindex = {**blkSltindex, **ablkSltindex}
 		except:
 			print("Host "+hostName+" isnt recording beacon proposers")
-			print(traceback.format_exc())
 		
 		try:
 			daemonResponseCommitt = execOnDockerHost(hostName,"cat beaconCommittees.txt")[0]
@@ -446,7 +424,6 @@ def interactiveBeaconBlockViewer(hostNames,validatorindexHost,ipTable,filePath,b
 			blkCommittProp = {**blkCommittProp, **ablkCommittProp}
 		except:
 			print("Host "+hostName+" isnt recording beacon committees")
-			print(traceback.format_exc())
 			
 			
 		
@@ -454,7 +431,6 @@ def interactiveBeaconBlockViewer(hostNames,validatorindexHost,ipTable,filePath,b
 			daemonResponse = execOnDockerHost(hostName,"cat beaconBlocks.txt")
 		except:
 			print("Host "+hostName+" isnt recording beacon blocks")
-			print(traceback.format_exc())
 			continue
 		for line in daemonResponse:
 			blockItems = line.split(' ')
@@ -576,11 +552,8 @@ def interactiveBeaconBlockViewer(hostNames,validatorindexHost,ipTable,filePath,b
 				break; #break is new
 	if anchorSlot != -1:
 		for timestamp in attackTimestamps:
-			if timestamp[1] == -10:
-				net.add_node(str(timestamp[0]), label = str(timestamp[0])+"\nWhole Network Delayed", color = "#FFFF00", shape = "circle", slot = (((timestamp[0]-anchorTime)/12.0) + int(anchorSlot))*230, y = 20)
-			else:
-				net.add_node(str(timestamp[0]), label = str(timestamp[0])+"\nNetwork Disconnected", color = "#990000", shape = "circle", slot = (((timestamp[0]-anchorTime)/12.0) + int(anchorSlot))*230, y = 20)
-				net.add_node(str(timestamp[1]), label = str(timestamp[1])+"\nNetwork Reconnected", color = "#009900", shape = "circle", slot = (((timestamp[1]-anchorTime)/12.0) + int(anchorSlot))*230, y = 20)
+			net.add_node(str(timestamp[0]), label = str(timestamp[0])+"\nNetwork Disconnected", color = "#990000", shape = "circle", slot = (((timestamp[0]-anchorTime)/12.0) + int(anchorSlot))*230, y = 20)
+			net.add_node(str(timestamp[1]), label = str(timestamp[1])+"\nNetwork Reconnected", color = "#009900", shape = "circle", slot = (((timestamp[1]-anchorTime)/12.0) + int(anchorSlot))*230, y = 20)
 	
 	try:
 		edges = [(key, value) for key, values in blkParent.items() if key != '0x0000000000000000000000000000000000000000000000000000000000000000' for value in values]
@@ -798,7 +771,7 @@ def minDict(dict1, dict2):
     return result
 
 
-def singleReorg(hostNames,offset=11,delayAmt = 25,isDelay=False,iReconnect=False):
+def singleReorg(hostNames,offset=11,delayAmt = 25,isDelay=False):
 	#Working Single Block Reorg on network where 50% of validators are in one as connected to another as with other 50%
 	
 	newBlockLineInLog = execOnDockerHost(hostNames[0],"cat tmp/local-testnet/eth-*/beacon/logs/beacon.log | grep \"New block received\" | tail -1")
@@ -837,25 +810,6 @@ def singleReorg(hostNames,offset=11,delayAmt = 25,isDelay=False,iReconnect=False
 		disconnectVector(delVec)
 	
 	time.sleep(delayAmt) #120 #was 12.5
-	
-	if iReconnect:
-		equalWeightsFlag = False
-		while True:
-			#keep waiting until equal weights on both sides of network
-			tipWeights = []
-			for hostName in hostNames:
-				aTipWeight = int(execOnDockerHost(hostName,"cat tipWeight.txt")[0])
-				#print(aTipWeight)
-				tipWeights.append(aTipWeight)
-			print(tipWeights)
-			for uniqueWeight in set(tipWeights):
-				if tipWeights.count(uniqueWeight) >= len(tipWeights) *.9: #Parameter: 90% of the nodes must have the same weight for it to be considered "equal" on both sides
-					equalWeightsFlag = True
-					break
-			if equalWeightsFlag:
-				break
-			time.sleep(5)
-		
 	
 	delVec = [0]*delayVectorLen()
 	
@@ -903,22 +857,6 @@ def net0ipTable(hostNames):
 		ipTable[hostName] = getIP(hostName)[0]
 	return ipTable
 
-
-
-
-def delayWholeNetwork(hostNames,delayAmount):
-	delVec = [delayAmount]*delayVectorLen()
-	startTime = time.time()
-	delayVector(delVec)
-	return (startTime,-10) #-10 Signifies that this is a delay when plotting attack timestamp
-
-def delayWholeNetworkArrayIn(hostNames,delVec):
-	startTime = time.time()
-	delayVector(delVec)
-	return (startTime,-10) #-10 Signifies that this is a delay when plotting attack timestamp
-
-
-
 #hostNames = getHostNames();
 #hostAddrs = getHostAddrs(hostNames);
 
@@ -959,7 +897,7 @@ for hostName in hostNames:
 	if hostName in ipTable:
 		nodeIP=ipTable[hostName]
 		lastQuad = nodeIP.split(".")[-1]
-		if True: #lastQuad == '72':
+		if lastQuad == '72':
 			newHostNames.append(hostName)
 hostNames = newHostNames
 
@@ -974,9 +912,8 @@ while True:
 			if input("Auto Attack? (y/n)") == 'y':
 				numTimes = int(input("Num Times:"))
 				minDelayBetween = int(input("Min time between attacks:"))
-				iRec = input("Intellegent Reconnect? (y/n)") == 'y'
 				for i in range(numTimes):
-					(startTime,endTime) = singleReorg(hostNames,11,75,False,iRec)
+					(startTime,endTime) = singleReorg(hostNames,11,75,False)
 					attackTimestamps.append((startTime,endTime))
 					print("Waiting in between attacks")
 					time.sleep(random.randint(minDelayBetween,minDelayBetween*2))
@@ -988,40 +925,11 @@ while True:
 					if delayAmt>548:
 						print("Delay above max, setting to 548")
 						delayAmt = 548
-					iRec = input("Intellegent Reconnect? (y/n)") == 'y'
-					(startTime,endTime) = singleReorg(hostNames,offset,delayAmt,isDelay,iRec)
+					(startTime,endTime) = singleReorg(hostNames,offset,delayAmt,isDelay)
 				except:
 					print("Using defaults")
 					(startTime,endTime) = singleReorg(hostNames)
 				attackTimestamps.append((startTime,endTime))
-		if input("Delay whole network? (y/n)") == 'y':
-			if input("By multiple (y) or by absolute value (n)?") == 'y':
-				oldDelayValues = readDelayVector()
-				scaleFactor = float(input("Scale factor to scale existing delay values by (float):"))
-				attackDuration = int(input("How long should this delay be applied for in s (Enter 0 for infinite)"))
-				delVec = [math.ceil(i*scaleFactor) for i in oldDelayValues]
-				(startTime,endTime) = delayWholeNetworkArrayIn(hostNames,delVec)
-				attackTimestamps.append((startTime,endTime))
-				if attackDuration != 0:
-					print("Waiting specified duration")
-					time.sleep(attackDuration)
-					print("Restoring old delay values")
-					(startTime,endTime) = delayWholeNetworkArrayIn(hostNames,oldDelayValues)
-					attackTimestamps.append((startTime,endTime))
-			else:
-				delayAmount = int(input("Delay amount to be applied to each link in ms (max 274000):"))#Transit AS to Transit AS links will have double the amount of delay compared to Stub AS to Transit AS
-				if delayAmount>274000:
-					delayAmount = 274000
-					print("Delay above max, setting to 274000")
-				attackDuration = int(input("How long should this delay be applied for in s (Enter 0 for infinite)"))
-				(startTime,endTime) = delayWholeNetwork(hostNames,delayAmount)
-				attackTimestamps.append((startTime,endTime))
-				if attackDuration != 0:
-					print("Waiting specified duration")
-					time.sleep(attackDuration)
-					print("Restoring 0 delay")
-					(startTime,endTime) = delayWholeNetwork(hostNames,0)
-					attackTimestamps.append((startTime,endTime))
 		if input("Plot blockchain? (y/n)") == 'y':
 			multiInteractiveBeaconBlocks(hostNames,validatorindexHost,ipTable,attackTimestamps,'ibeaconBlocks',1,60)
 	except: # Exception as e:
@@ -1030,14 +938,6 @@ while True:
 		print(traceback.format_exc())
 		if input("There was an error. Quit? (y/n)") == 'y':
 			break
-
-
-
-
-
-
-
-
 
 
 #multiPlotBeaconBlocks(hostNames,'beaconBlocks',30,10)
