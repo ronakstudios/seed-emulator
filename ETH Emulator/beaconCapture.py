@@ -1,6 +1,9 @@
 import time
 import subprocess
 import json
+import traceback
+
+#This is the data collection daemon
 
 def exec(cmd):
     letters = subprocess.check_output(cmd,shell=True, text=True)
@@ -56,10 +59,25 @@ def listSplit(execArr,sep):
 	
 def popcount16str(instr):
 	return bin(int(instr,16)).count('1')
+
+
+blkAttestCount = {}
+
+tipAttestations = 0
+
+def flushTipAttestations():
+	tipAttestationsFile = open("tipWeight.txt","w")
+	tipAttestationsFile.write(str(tipAttestations))
+	tipAttestationsFile.close()
 	
 def getBeaconBlocks():
+	global tipAttestations
+	
+	#Important parameter
+	numBlocksReadBack = 15 #was 10
+	
 	tail = tipBlockNumber()
-	head = max(tail - 10,0); #!!! If this node switches to a different fork, doesnt that mean a lot of blocks change for it and this method of only looking at 10 most recent blocks would miss all the new blocks from that fork if there is more than
+	head = max(tail - numBlocksReadBack,0); #!!! If this node switches to a different fork, doesnt that mean a lot of blocks change for it and this method of only looking at 10 most recent blocks would miss all the new blocks from that fork if there is more than
 	#10 from the new head to where the 2 forks diverged. Of course those blocks will be collected by other nodes who were on that fork already in the combined view so this is an issue for the individual view only
 	
 	nodeIP = getIP()
@@ -89,6 +107,36 @@ def getBeaconBlocks():
 				numBlkHashPairsString += str(numAttestations)+","+associatedBlk+"|"
 			
 			blocks[root] = Block(root,parent,slot,numBlkHashPairsString)
+			
+			
+			#Calculation of tipWeight
+			tempblkAttestCount = {}
+			for pair in numBlkHashPairs:
+				numAttestations = int(pair[0])
+				associatedBlk = pair[1]
+
+				if associatedBlk in tempblkAttestCount:
+					tempblkAttestCount[str(associatedBlk)] += numAttestations
+				else:
+					tempblkAttestCount[str(associatedBlk)] = numAttestations
+			for  pair in tempblkAttestCount.items():
+				if pair[0] in blkAttestCount:
+					if pair[1] > blkAttestCount[str(pair[0])]:
+						blkAttestCount[str(pair[0])] = pair[1]
+				else:
+					blkAttestCount[str(pair[0])] = pair[1]
+				
+			if True: #i == (len(someBlocks)-2):
+				tempblockItr = root
+				tempTipAttestations = 0
+				
+				while tempblockItr != "0x0000000000000000000000000000000000000000000000000000000000000000":
+					tempTipAttestations += blkAttestCount.get(tempblockItr,0)
+					tempblockItr = blocks[tempblockItr].parent
+				
+				tipAttestations = max(tipAttestations,tempTipAttestations) #max wrapper is new
+				
+				
 
 
 blkSltindex = {} #blockHash: [(slot, validator_index), ...]
@@ -153,8 +201,9 @@ def shouldIRecord():
 	nodeIP = getIP()
 	lastQuad = nodeIP.split(".")[-1]
 	#return  lastQuad == '254' or lastQuad == '253'
-	return lastQuad == '72'
-	#return True
+	#return lastQuad == '72'
+	#return False
+	return True
 
 if shouldIRecord():
 	while True:
@@ -163,8 +212,9 @@ if shouldIRecord():
 			getBeaconProposers()
 			getBeaconCurrentBlkCommitteeAndProposer()
 			flush()
+			flushTipAttestations()
 			flush2()
 			flush3()
 		except:
-			pass
+			print(traceback.format_exc())
 		time.sleep(5)
