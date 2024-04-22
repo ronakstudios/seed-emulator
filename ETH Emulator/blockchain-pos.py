@@ -41,7 +41,7 @@ ebgp    = Ebgp()
 ibgp    = Ibgp()
 ospf    = Ospf()
 
-mode = 'notcaida' #make this a command line argument
+mode = 'notcaida' #change to 'caida' to use caida input file format (name the caida dataset file caida.txt) #make this a command line argument
 
 if mode == 'caida':
 	astopology = open("caida.txt","r", encoding="utf-8")
@@ -49,7 +49,7 @@ else:
 	astopology = open("ASTopology.txt","r", encoding="utf-8")
 
 astopologyLines = astopology.readlines()
-astopologyLines = astopologyLines[:1000] if mode == 'caida' else astopologyLines #Remove this later when you change network to 18/14 instead of 16/16 public private subnet that it currently is
+astopologyLines = astopologyLines[:1000] if mode == 'caida' else astopologyLines #Caida is too big for this emulator so the number 1000 limits the input to only the first 1000 lines of the dataset #Remove this later when you change network to 18/14 instead of 16/16 public private subnet that it currently is
 astopology.close()
 	
 asclients = open("ASClients.txt","r", encoding="utf-8")
@@ -291,7 +291,7 @@ for i in range(len(ASGraphNodes)):
 				
 				#get the transit-transit edge delay Corresponding to this betweenix
 				delayAmt = ASGraph.get_edge_data(BetweenIXCorresponding[j][0],BetweenIXCorresponding[j][1])['delay']
-				delayAmt = delayAmt/2.0 #remember to divide by 2
+				delayAmt = delayAmt/2.0 #remember to divide by 2 since one router is on each side of the edge
 				if delayAmt>0:
 					ttroutr.appendStartCommand('tc qdisc del dev '+network+' root && tc qdisc add dev '+network+' root netem delay '+str(delayAmt)+'ms')
 				
@@ -484,6 +484,8 @@ for id in range(len(hostAsnIds)):#The if statements that use the id are the reas
     with open("beaconCapture.py") as bcCode:
     	emu.getVirtualNode('eth{}'.format(i)).appendFile('/beaconCapture.py', bcCode.read())
     	emu.getVirtualNode('eth{}'.format(i)).appendStartCommand('python3 beaconCapture.py </dev/null &')
+
+	#Deploy smart contracts here
 
     # Binding the virtual node to the physical node. 
     #IMPORTANT: Changed 'eth{}'.format(i) to r'\beth{}\b'.format(i) This is because this first parameter to binding constuctor is not a regular string that will be == with the vnode name, it is actually a regex that will be
