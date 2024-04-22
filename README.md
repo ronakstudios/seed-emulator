@@ -12,7 +12,7 @@ Install the following dependencies:
 * pyvis
 * matplotlib
 * docker
-* docker-compose, specifically version 2.20.2
+* docker-compose, specifically version 2.20.2 (avaliable [here](https://github.com/docker/compose/releases/tag/v2.20.2))
 
 Depending on which way you installed docker compose (standalone or part of docker) you may need to change the last line of the setup program (blockchain-pos.py) from `docker compose` to `docker-compose` (2 occurrences in the line). If you are running on a hpc may need to comment out the line and do it manually (see later)
 
